@@ -1,9 +1,22 @@
-import { Form, Detail, ActionPanel, Action, showToast, LocalStorage, confirmAlert, Alert } from "@raycast/api";
+import {
+  Form,
+  Detail,
+  ActionPanel,
+  Action,
+  Icon,
+  showToast,
+  Toast,
+  LocalStorage,
+  confirmAlert,
+  Alert,
+  popToRoot,
+} from "@raycast/api";
 import { useState, useEffect } from "react";
 import fetch from "node-fetch";
-import { formatText, formatPreviewText } from "./utils"
-import Preview from "./Preview"
 import { Template, callBackFunction } from "./types"
+import { formatText, formatPreviewText } from "./utils"
+import { fetchTemplates } from "./api"
+import Preview from "./Preview"
 
 const FONTS = [
   { id: "titilliumweb", name: "Titillium Web Black" },
@@ -16,22 +29,24 @@ export default function Command() {
   const [text, setText] = useState<string[] | undefined>([]);
   const [font, setFont] = useState<string>("impact");
   const [templates, setTemplates] = useState<Template[] | undefined>([]);
-  const [template, setTemplate] = useState<string | undefined>();
+  const [template, setTemplate] = useState<string | undefined>('default');
   const [templateData, setTemplateData] = useState<Template | undefined>();
   const [style, setStyle] = useState<string | undefined>();
   const [url, setUrl] = useState<string | undefined>();
 
   async function loadTemplates() {
-    const item = await LocalStorage.getItem<string>("templates");
-    if (item) {
-      setTemplates(JSON.parse(item))
-    } else {
-      const response = await fetch("https://api.memegen.link/templates")
-      const json = await response.json();
-      await LocalStorage.setItem("templates", JSON.stringify(json));
-      setTemplates(json as Array<Template>);
+    try {
+      const templates = await fetchTemplates();
+      setTemplates(templates);
+    } catch (err: any) {
+      showToast(Toast.Style.Failure, "Something went wrong", err.message);
+      popToRoot();
     }
   }
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
 
   function updateUrl() {
     const api = "https://api.memegen.link/images"
@@ -40,10 +55,6 @@ export default function Command() {
     const shareUrl = `${api}/${template}/${formatText(textToFormat)}.jpg?font=${font}${style ? '&style=' + style : ''}`
     setUrl(shareUrl)
   }
-
-  useEffect(() => {
-    loadTemplates();
-  }, []);
 
   useEffect(() => {
     if (templates) {
@@ -80,7 +91,7 @@ export default function Command() {
     await confirmAlert(options);
   }
 
-  async function resetFields() {
+  function resetFields() {
     if (text && text.length) {
       getConfirmation(resetText)
     } else {
@@ -102,8 +113,8 @@ export default function Command() {
       actions={
         <ActionPanel>
           {templateData && url && <Action.Push title="Preview" target={<Preview url={url} template={templateData}/>} />}
-          <Action title="Fill example text" onAction={fillExample} />
-          <Action title="Reset fields" onAction={resetFields} />
+          {template && template !== 'default' && <Action title="Fill example text" onAction={fillExample} />}
+          {text && text.length && text.some(t => !!t) && <Action title="Reset fields" onAction={resetFields} icon={Icon.Trash} shortcut={{ modifiers: ["cmd"], key: "backspace" }}/>}
         </ActionPanel>
       }
     >
@@ -113,9 +124,9 @@ export default function Command() {
         title="Template"
         value={template}
         onChange={setTemplate}
-        storeValue
         autoFocus
       >
+        <Form.Dropdown.Item value="default" title="Choose template" />
         {templates && templates.length && templates.map((template: Template) => (
           <Form.Dropdown.Item key={template.id} value={template.id} title={template.name} />
         ))}
@@ -133,7 +144,7 @@ export default function Command() {
           />
         )
       })}
-      {templateData && templateData.styles && templateData.styles.length && (
+      {templateData && templateData.styles && templateData.styles.length > 1 && (
         <Form.Dropdown
           id="styles"
           title="Style"

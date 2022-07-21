@@ -4,7 +4,7 @@ import { Template } from "./types"
 function Preview({ url, template }: { url: string, template: Template }) {
   return (
     <Detail
-      markdown={`<img src="${url}" height="380" />`}
+      markdown={`<img src="${url}" height="350" />`}
       metadata={
         <Detail.Metadata>
           <Detail.Metadata.Link
