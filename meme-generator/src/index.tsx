@@ -34,9 +34,9 @@ export default function Command() {
   const [style, setStyle] = useState<string | undefined>();
   const [url, setUrl] = useState<string | undefined>();
 
-  async function loadTemplates() {
+  async function loadTemplates(forceRefresh: boolean = false) {
     try {
-      const templates = await fetchTemplates();
+      const templates = await fetchTemplates(forceRefresh);
       setTemplates(templates);
     } catch (err: any) {
       showToast(Toast.Style.Failure, "Something went wrong", err.message);
@@ -115,6 +115,7 @@ export default function Command() {
           {templateData && url && <Action.Push title="Preview" target={<Preview url={url} template={templateData}/>} />}
           {template && template !== 'default' && <Action title="Fill example text" onAction={fillExample} />}
           {text && text.length && text.some(t => !!t) && <Action title="Reset fields" onAction={resetFields} icon={Icon.Trash} shortcut={{ modifiers: ["cmd"], key: "backspace" }}/>}
+          <Action title="Refresh templates" onAction={() => loadTemplates(true)} icon={Icon.ArrowClockwise} />
         </ActionPanel>
       }
     >

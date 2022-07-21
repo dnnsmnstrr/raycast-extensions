@@ -1,12 +1,12 @@
-import { LocalStorage } from "@raycast/api";
+import { LocalStorage, showToast, Toast } from "@raycast/api";
 import { Template } from "./types";
 import fetch from "node-fetch";
 
-export async function fetchTemplates(): Promise<Template[]> {
+export async function fetchTemplates(forceRefresh: boolean = false): Promise<Template[]> {
   let apiUrl = "https://api.memegen.link/templates";
   const item = await LocalStorage.getItem<string>("templates");
 
-  if (item) {
+  if (item && !forceRefresh) {
     return JSON.parse(item)
   } else {
     const response = await fetch(apiUrl);
@@ -15,7 +15,9 @@ export async function fetchTemplates(): Promise<Template[]> {
       throw new Error("Failed to fetch templates");
     }
 
-    return (await response.json()) as Template[];
+    const templates: Template[] = await response.json();
+    await showToast({ title: "Downloaded templates", message: `${templates.length} templates currently available` });
+    return templates;
   }
   throw new Error("No templates found");
 }
